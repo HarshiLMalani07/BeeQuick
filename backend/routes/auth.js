@@ -36,6 +36,12 @@ router.post('/register', async (req, res) => {
     // Generate JWT
     const token = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: '1h' });
 
+    res.cookie('token', token, {
+      httpOnly: true, // Helps mitigate XSS attacks
+      secure: process.env.NODE_ENV === 'production', // Use 'secure' cookies only in production
+      maxAge: 10 * 12 * 30 * 24 * 3600000 // Cookie expiration in milliseconds (1 hour)
+    });
+
     res.status(201).json({ token, user: newUser });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -58,29 +64,30 @@ router.post('/login', async (req, res) => {
     // Generate JWT
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '1h' });
 
+    res.cookie('token', token, {
+      httpOnly: true, // Helps mitigate XSS attacks
+      secure: process.env.NODE_ENV === 'production', // Use 'secure' cookies only in production
+      maxAge: 10 * 12 * 30 * 24 * 3600000 // Cookie expiration in milliseconds (1 hour)
+    });
+
     res.json({ token, user });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// Token verification middleware
-const verifyToken = (req, res, next) => {
-  const token = req.header('x-auth-token');
-  if (!token) return res.status(401).json({ message: 'No token, authorization denied' });
-
+router.post('/logout', (req, res) => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    res.status(400).json({ message: 'Token is not valid' });
-  }
-};
+    // Clear the token cookie
+    res.cookie('token', '', {
+      httpOnly: true,
+      expires: new Date(0) // Set the cookie to expire immediately
+    });
 
-// Protected route example
-router.get('/protected', verifyToken, (req, res) => {
-  res.send('This is a protected route.');
+    res.status(200).json({ message: 'Logged out successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 
 module.exports = router;
