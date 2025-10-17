@@ -4,35 +4,43 @@ const User = require('../models/User');
 const Bicycle = require('../models/Bicycle');
 const Location = require('../models/Location');
 const router = express.Router();
+const mongoose = require('mongoose');
 
 // Utility function to calculate ride cost based on time difference
 const calculateCost = (time_pick, time_drop) => {
-  const diffInMinutes = Math.ceil((new Date(time_drop) - new Date(time_pick)) / 60000);
+  const diffInMinutes = Math.ceil(
+    (new Date(time_drop) - new Date(time_pick)) / 60000,
+  );
   if (diffInMinutes <= 30) return 5;
   return 5 + Math.ceil((diffInMinutes - 30) / 30) * 5;
 };
 
 // Get available bicycles at a pickup location
 router.get('/available-bicycles', async (req, res) => {
-  const { loc_pick } = req.query;
+  const {loc_pick} = req.query;
 
   try {
     // Check if the location exists
     const location = await Location.findById(loc_pick);
-    if (!location) return res.status(404).json({ message: 'Location not found' });
+    if (!location) return res.status(404).json({message: 'Location not found'});
 
-    const bicycles = await Bicycle.find({ location: loc_pick, availability: true });
+    const bicycles = await Bicycle.find({
+      location: loc_pick,
+      availability: true,
+    });
     if (bicycles.length === 0) {
-      return res.status(404).json({ message: 'No available bicycles at this location' });
+      return res
+        .status(404)
+        .json({message: 'No available bicycles at this location'});
     }
     res.json(bicycles);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({message: error.message});
   }
 });
 
 router.post('/create', async (req, res) => {
-  const { username, bikeId, loc_pick } = req.body;
+  const {username, bikeId, loc_pick} = req.body;
 
   try {
     const user = await User.findById(username);
@@ -40,11 +48,13 @@ router.post('/create', async (req, res) => {
     const pickLocation = await Location.findById(loc_pick);
 
     if (!user || !bicycle || !pickLocation) {
-      return res.status(404).json({ message: 'Invalid data provided' });
+      return res.status(404).json({message: 'Invalid data provided'});
     }
 
     if (!bicycle.availability || bicycle.loc_avail.toString() !== loc_pick) {
-      return res.status(400).json({ message: 'Bicycle is not available at this location' });
+      return res
+        .status(400)
+        .json({message: 'Bicycle is not available at this location'});
     }
 
     const time_pick = new Date(); // Record the current time as pickup time
@@ -64,25 +74,24 @@ router.post('/create', async (req, res) => {
 
     res.status(201).json(newRide);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({message: error.message});
   }
 });
 
-
 // End a ride
 router.put('/end', async (req, res) => {
-  const { rideId, loc_drop } = req.body;
+  const {rideId, loc_drop} = req.body;
 
   try {
     // Find the ride
     const ride = await Ride.findById(rideId);
     if (!ride) {
-      return res.status(404).json({ message: 'Ride not found' });
+      return res.status(404).json({message: 'Ride not found'});
     }
 
     const dropLocation = await Location.findById(loc_drop);
     if (!dropLocation) {
-      return res.status(404).json({ message: 'Invalid drop location' });
+      return res.status(404).json({message: 'Invalid drop location'});
     }
 
     const time_drop = new Date(); // Record the current time as drop time
@@ -102,72 +111,82 @@ router.put('/end', async (req, res) => {
 
     res.json(ride);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({message: error.message});
   }
 });
 
 // Get rides for a specific user
 router.get('/user/:username', async (req, res) => {
-  const { username } = req.params;
-
+  const {username} = req.params;
+  // router.get('/user', async (req, res) => {
+    //   const { username } = req.body;
+    //   // console.log(username);
   try {
-    const rides = await Ride.find({ username }).populate('username bikeId loc_pick loc_drop');
+    const rides = await Ride.find({username}).populate(
+      'username bikeId loc_pick loc_drop',
+    );
     if (rides.length === 0) {
-      return res.status(404).json({ message: 'No rides found for this user' });
+      return res.status(404).json({message: 'No rides found for this user'});
     }
     res.json(rides);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error fetching rides:', error);
+    res.status(500).json({message: error.message});
   }
 });
 
 // Alternatively, if you want to use user ID
-router.get('/user/id/:id', async (req, res) => {
-  const { id } = req.params;
-
+router.post('/user/id', async (req, res) => {
+  const {id} = req.body;
   try {
-    const rides = await Ride.find({ username: id }).populate('username bikeId loc_pick loc_drop');
+    const rides = await Ride.find({username: id}).populate(
+      'username bikeId loc_pick loc_drop',
+    );
     if (rides.length === 0) {
-      return res.status(404).json({ message: 'No rides found for this user' });
+      return res.status(404).json({message: 'No rides found for this user'});
     }
-    res.json(rides);
+    return res.json(rides);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({message: error.message});
   }
 });
 
 // Get all rides
 router.get('/', async (req, res) => {
   try {
-    const rides = await Ride.find().populate('username bikeId loc_pick loc_drop');
+    const rides = await Ride.find().populate(
+      'username bikeId loc_pick loc_drop',
+    );
     res.json(rides);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({message: error.message});
   }
 });
 
 // Get a single ride by ID
 router.get('/:id', async (req, res) => {
   try {
-    const ride = await Ride.findById(req.params.id).populate('username bikeId loc_pick loc_drop');
+    const ride = await Ride.findById(req.params.id).populate(
+      'username bikeId loc_pick loc_drop',
+    );
     if (!ride) {
-      return res.status(404).json({ message: 'Ride not found' });
+      return res.status(404).json({message: 'Ride not found'});
     }
     res.json(ride);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({message: error.message});
   }
 });
 
 // Update a ride
 router.put('/:id', async (req, res) => {
-  const { time_drop } = req.body;
+  const {time_drop} = req.body;
 
   try {
     // Find the ride and update the time_drop and amount
     const ride = await Ride.findById(req.params.id);
     if (!ride) {
-      return res.status(404).json({ message: 'Ride not found' });
+      return res.status(404).json({message: 'Ride not found'});
     }
 
     ride.time_drop = time_drop;
@@ -176,7 +195,7 @@ router.put('/:id', async (req, res) => {
     await ride.save();
     res.json(ride);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({message: error.message});
   }
 });
 
@@ -185,7 +204,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const deletedRide = await Ride.findByIdAndDelete(req.params.id);
     if (!deletedRide) {
-      return res.status(404).json({ message: 'Ride not found' });
+      return res.status(404).json({message: 'Ride not found'});
     }
 
     // Mark the bicycle as available
@@ -195,9 +214,9 @@ router.delete('/:id', async (req, res) => {
       await bicycle.save();
     }
 
-    res.json({ message: 'Ride deleted successfully' });
+    res.json({message: 'Ride deleted successfully'});
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({message: error.message});
   }
 });
 

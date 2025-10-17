@@ -30,7 +30,7 @@ const Register = ({ navigation }) => {
     }),
     onSubmit: async (values) => {
       try {
-        const response = await axios.post('http://192.168.1.2:3000/api/auth/register', values);
+        const response = await axios.post('http://192.168.29.20:3000/api/auth/register', values);
         Alert.alert('Success', 'Registration successful!');
         navigation.navigate('Login');
       } catch (error) {

@@ -1,28 +1,61 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Button } from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {View, Text, Button, StyleSheet} from 'react-native';
 import axios from 'axios';
 
-const SummaryPage = ({ route, navigation }) => {
-  // Destructure ride data from route params
-  const { _id , username, bikeId, loc_pick, loc_drop, time_pick, time_drop, amount } = route.params;
-
+const SummaryPage = ({route, navigation}) => {
   const [locDrop, setLocDrop] = useState('');
   const [pickUpLocation, setPickUpLocation] = useState('');
   const [nameOfUser, setNameOfUser] = useState('');
   const [realBikeId, setRealBikeId] = useState('');
+  const {rideData, token} = route.params;
 
   const handleRidedata = async () => {
     try {
-      const dropLocRes = await axios.post('http://192.168.1.2:3000/api/locations/droplocid', { loc_drop });
+      const dropLocRes = await axios.post(
+        'http://192.168.29.20:3000/api/locations/droplocid',
+        {loc_drop: rideData.loc_drop},
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+      // const dropLocRes = await axios.post('http://192.168.1.7:3000/api/locations/droplocid', { loc_drop });
       const dropLoc = dropLocRes.data;
-      const locRes = await axios.post('http://192.168.1.2:3000/api/locations/pickuplocid', { loc_pick });
+      // const locRes = await axios.post('http://192.168.1.7:3000/api/locations/pickuplocid', { loc_pick });
+      const locRes = await axios.post(
+        'http://192.168.29.20:3000/api/locations/pickuplocid',
+        {loc_pick: rideData.loc_pick},
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
       const loc = locRes.data;
-      const userRes = await axios.post('http://192.168.1.2:3000/api/userid/get-username', { username });
-      const user = userRes.data;
-      const bikeRes = await axios.post('http://192.168.1.2:3000/api/bicycles/get-bikeid', { bikeId });
+      const userRes = await axios.post(
+        'http://192.168.29.20:3000/api/userid/get-username',
+        {username: rideData.username},
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+      user = userRes.data;
+      const bikeRes = await axios.post(
+        'http://192.168.29.20:3000/api/bicycles/get-bikeid',
+        {bikeId: rideData.bikeId},
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+      // const userRes = await axios.post('http://192.168.1.7:3000/api/userid/get-username', { username });
+      // const user = userRes.data;
+      // const bikeRes = await axios.post('http://192.168.1.7:3000/api/bicycles/get-bikeid', { bikeId });
       const bike = bikeRes.data;
-
-      // console.log(loc);
 
       if (!dropLoc) {
         console.error('Invalid drop location ID.');
@@ -43,34 +76,53 @@ const SummaryPage = ({ route, navigation }) => {
         console.error('Invalid bike ID.');
         return;
       }
-
+      const newBalance = await axios.post(
+        'http://192.168.29.20:3000/api/auth/charge',
+        {userId: rideData.username, charge: rideData.amount.toFixed(2)},
+      );
+      if (!newBalance) {
+        console.error('Charges deduction failed');
+      }
       setLocDrop(dropLoc.loc_name);
       setPickUpLocation(loc.loc_name);
       setNameOfUser(user.username);
       setRealBikeId(bike.bikeId);
-      
     } catch (error) {
       console.error('Error getting rideData:', error);
     }
   };
 
-  handleRidedata();
+  useEffect(() => {
+    handleRidedata();
+  }, []);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Ride Summary</Text>
-      <Text style={styles.detail}>Ride ID: {_id}</Text>
+      <Text style={styles.detail}>Ride ID: {rideData._id}</Text>
       <Text style={styles.detail}>Username: {nameOfUser}</Text>
       <Text style={styles.detail}>Bike ID: {realBikeId}</Text>
       <Text style={styles.detail}>Pickup Location: {pickUpLocation}</Text>
       <Text style={styles.detail}>Drop-off Location: {locDrop}</Text>
-      <Text style={styles.detail}>Pickup Time: {new Date(time_pick).toLocaleString()}</Text>
-      <Text style={styles.detail}>Drop-off Time: {new Date(time_drop).toLocaleString()}</Text>
-      <Text style={styles.detail}>Amount: {amount.toFixed(2)} Tokens</Text>
+      <Text style={styles.detail}>
+        Pickup Time: {new Date(rideData.time_pick).toLocaleString()}
+      </Text>
+      <Text style={styles.detail}>
+        Drop-off Time: {new Date(rideData.time_drop).toLocaleString()}
+      </Text>
+      <Text style={styles.detail}>
+        Amount: {rideData.amount.toFixed(2)} Tokens
+      </Text>
       <Button
         title="Back to Rental"
-        onPress={() => navigation.navigate('Rental')}
-        color="#4CAF50" // Match the button color from Rental page
+        onPress={() =>
+          navigation.navigate('Home', {
+            username: rideData.username,
+            token,
+            amount: rideData.amount.toFixed(2),
+          })
+        }
+        color="#4CAF50"
         width="100%"
       />
     </View>

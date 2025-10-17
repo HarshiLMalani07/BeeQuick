@@ -1,5 +1,6 @@
 const express = require('express');
 const Location = require('../models/Location');
+const User = require('../models/User')
 const router = express.Router();
 
 // Create a new location

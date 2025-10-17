@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "187142735735",
+    "project_id": "beequick-3182e",
+    "storage_bucket": "beequick-3182e.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:187142735735:android:77e6db78229474c6d54372",
+        "android_client_info": {
+          "package_name": "com.beequick"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAGVgRN4KHA4EcsJVA1DSCudQzmqm43k_k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

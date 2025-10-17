@@ -1,83 +1,93 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-// import MapView, { Marker, Polyline } from 'react-native-maps'; //
-// import Geolocation from 'react-native-geolocation-service';  //
+import MapView, { Marker } from 'react-native-maps';
+import imagePath from '../src/constants/imagePath';
+import { locationPermission, getCurrentLoc } from '../helper/helperFunction';
+import Geolocation from 'react-native-geolocation-service';
+// import React, {useState} from 'react';
+// import {View, Text, TextInput, Button, StyleSheet} from 'react-native';
+import {useRoute} from '@react-navigation/native';
 
-const StatusPage = ({ route, navigation }) => {
-//   const route = useRoute();
-  const { rideId, username, bikeId, loc_pick, time_pick } = route.params;
+const StatusPage = ({route, navigation}) => {
+  //   const route = useRoute();
+  const {rideId, username, bikeId, loc_pick, time_pick, token} = route.params;
+  // const StatusPage = ({ route, navigation }) => {
+    //   const { rideId, username, bikeId, loc_pick, time_pick } = route.params;
   // console.log(time_pick);
   const [locDrop, setLocDrop] = useState('');
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [pickUpLocation, setPickUpLocation] = useState('');
   const [nameOfUser, setNameOfUser] = useState('');
   const [realBikeId, setRealBikeId] = useState('');
-  // const [region, setRegion] = useState(null);  //
-  // const [markers, setMarkers] = useState([]);  //
-  // const [routeCoordinates, setRouteCoordinates] = useState([]);  //
+  const mapRef = useRef();
 
+  // Separate state variables for curLoc and dropoffCoords
+  const [curLoc, setCurLoc] = useState({
+    latitude: 23.17533585988,
+    longitude: 80.02260292768577,
+    latitudeDelta: 0.015,
+    longitudeDelta: 0.015,
+  });
 
-  // useEffect(() => {    //
-  //   const getLocationPermission = async () => {
-  //     if (Platform.OS === 'android') {
-  //       try {
-  //         const granted = await PermissionsAndroid.request(
-  //           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-  //           {
-  //             title: "Location Access Permission",
-  //             message: "We would like to use your location to show your current position on the map.",
-  //             buttonNeutral: "Ask Me Later",
-  //             buttonNegative: "Cancel",
-  //             buttonPositive: "OK"
-  //           }
-  //         );
-  //         if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-  //           console.log("You can use the location");
-  //         } else {
-  //           console.log("Location permission denied");
-  //         }
-  //       } catch (err) {
-  //         console.warn(err);
-  //       }
-  //     }
-  //   };
+  const [dropoffCoords, setDropoffCoords] = useState({
+    latitude: 23.17624126932023,
+    longitude: 80.01965358099041,
+    latitudeDelta: 0.015,
+    longitudeDelta: 0.015,
+  });
 
-  //   getLocationPermission();
-  // }, []);   //
+  useEffect(() => {
+    getLiveLocation();
+  }, []);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      getLiveLocation();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
-  // useEffect(() => {   //
-  //   Geolocation.getCurrentPosition(
-  //     (position) => {
-  //       setRegion({
-  //         latitude: position.coords.latitude,
-  //         longitude: position.coords.longitude,
-  //         latitudeDelta: 0.01,
-  //         longitudeDelta: 0.01,
-  //       });
-  //       setMarkers([{ latitude: position.coords.latitude, longitude: position.coords.longitude }]);
-  //     },
-  //     (error) => {
-  //       console.error(error);
-  //     },
-  //     { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-  //   );
-  // }, []);   //
+  const getLiveLocation = async () => {
+    const locPermissionGranted = await locationPermission();
+    if (locPermissionGranted) {
+      const { latitude, longitude } = await getCurrentLoc();
+      setCurLoc({
+        latitude,
+        longitude,
+        latitudeDelta: 0.015,
+        longitudeDelta: 0.015,
+      });
+    }
+  };
 
+  useEffect(() => {
+    handleRidedata();
+  }, []);
 
   const handleRidedata = async () => {
     try {
-      const locRes = await axios.post('http://192.168.1.2:3000/api/locations/pickuplocid', { loc_pick });
+      const locRes = await axios.post(
+        'http://192.168.29.20:3000/api/locations/pickuplocid',
+        {loc_pick},
+      );
       const loc = locRes.data;
-      const userRes = await axios.post('http://192.168.1.2:3000/api/userid/get-username', { username });
+      const userRes = await axios.post(
+        'http://192.168.29.20:3000/api/userid/get-username',
+        {username},
+      );
       const user = userRes.data;
-      const bikeRes = await axios.post('http://192.168.1.2:3000/api/bicycles/get-bikeid', { bikeId });
+      const bikeRes = await axios.post(
+        'http://192.168.29.20:3000/api/bicycles/get-bikeid',
+        {bikeId},
+      );
+       // const locRes = await axios.post('http://192.168.1.7:3000/api/locations/pickuplocid', { loc_pick });
+      // const loc = locRes.data;
+      // const userRes = await axios.post('http://192.168.1.7:3000/api/userid/get-username', { username });
+      // const user = userRes.data;
+      // const bikeRes = await axios.post('http://192.168.1.7:3000/api/bicycles/get-bikeid', { bikeId });
       const bike = bikeRes.data;
-
-      // console.log(loc);
 
       if (!loc) {
         console.error('Invalid location ID.');
@@ -97,18 +107,27 @@ const StatusPage = ({ route, navigation }) => {
       setPickUpLocation(loc.loc_name);
       setNameOfUser(user.username);
       setRealBikeId(bike.bikeId);
-      
     } catch (error) {
       console.error('Error getting rideData:', error);
     }
   };
-
+  // const handleEndRide = async () => {
+  //   try {
+  //     const locationResponse = await axios.post(
+  //       'http://192.168.29.20:3000/api/locations/locid',
+  //       {loc_id: locDrop},
+  //       {
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //         },
+  //       },
+  //     );
   const handleInputChange = async (text) => {
     setLocDrop(text);
-  
+
     if (text.length > 0) {
       try {
-        const response = await axios.post('http://192.168.1.2:3000/api/locations/search', {
+        const response = await axios.post('http://192.168.1.7:3000/api/locations/search', {
           query: text
         });
         setLocationSuggestions(response.data);
@@ -119,131 +138,124 @@ const StatusPage = ({ route, navigation }) => {
       setLocationSuggestions([]);
     }
   };
-  
+
+  const handleSelectLocation = async () => {
+    try {
+      const locationResponse = await axios.post('http://192.168.1.7:3000/api/locations/locid', { loc_id: locDrop });
+      const location = locationResponse.data;
+
+      if (!location) {
+        console.error('Location not found.');
+        return;
+      }
+
+      setDropoffCoords({
+        latitude: location.latitude,
+        longitude: location.longitude,
+        latitudeDelta: 0.015,
+        longitudeDelta: 0.015,
+      });
+
+      if (mapRef.current) {
+        mapRef.current.animateToRegion({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          latitudeDelta: 0.015,
+          longitudeDelta: 0.015,
+        });
+      }
+
+    } catch (error) {
+      if (error.response) {
+        console.error(`Server Error: ${error.response.status} - ${error.response.data.message}`);
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+      } else {
+        console.error('Error', error.message);
+      }
+    }
+  };
 
   const handleEndRide = async () => {
     try {
-      const locationResponse = await axios.post('http://192.168.1.2:3000/api/locations/locid', { loc_id: locDrop });
+      const locationResponse = await axios.post('http://192.168.1.7:3000/api/locations/locid', { loc_id: locDrop });
       const location = locationResponse.data;
 
       if (!location) {
         console.error('Invalid location ID.');
         return;
       }
+      // const response = await axios.put(
+      //   'http://192.168.29.20:3000/api/rides/end',
+      //   {
+      //     rideId,
+      //     loc_drop: location._id,
+      //   },
+      //   {
+      //     headers: {
+      //       'Content-Type': 'application/json',
+      //     },
+      //   },
+      // );
 
+      // const rideData = response.data;
 
-      // setMarkers([...markers, { latitude: location.latitude, longitude: location.longitude }]);   //
-      // // Assume you have a function to get the route coordinates
-      // const routeCoords = await getRouteCoordinates(region, location);
-      // setRouteCoordinates(routeCoords);   //
-
-
-      const response = await axios.put('http://192.168.1.2:3000/api/rides/end', {
-        rideId,
-        loc_drop: location._id,
-      });
+      // navigation.navigate('Summary', {rideData, token});
+      const response = await axios.put('http://192.168.1.7:3000/api/rides/end', 
+        {rideId,
+        loc_drop: location._id},
+                {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
 
       const rideData = response.data;
 
-      // Clear saved ride data
       await AsyncStorage.removeItem('currentRide');
 
+      navigation.navigate('Summary', {rideData,token});
 
-      navigation.navigate('Summary', rideData); // Or another relevant page
-      
     } catch (error) {
       console.error('Error ending ride:', error);
     }
   };
 
-
-  // const getRouteCoordinates = async (start, end) => {   //
-  //   try {
-  //     const apiKey = 'YOUR_GOOGLE_MAPS_API_KEY'; // Replace with your API key
-  //     const startLocation = `${start.latitude},${start.longitude}`;
-  //     const endLocation = `${end.latitude},${end.longitude}`;
-  
-  //     const response = await axios.get(
-  //       `https://maps.googleapis.com/maps/api/directions/json`,
-  //       {
-  //         params: {
-  //           origin: startLocation,
-  //           destination: endLocation,
-  //           key: apiKey,
-  //         },
-  //       }
-  //     );
-  
-  //     if (response.data.status === 'OK') {
-  //       const points = response.data.routes[0].overview_polyline.points;
-  //       const route = decodePolyline(points);
-  //       return route.map((point) => ({
-  //         latitude: point[0],
-  //         longitude: point[1],
-  //       }));
-  //     } else {
-  //       console.error('Error fetching directions:', response.data.status);
-  //       return [];
-  //     }
-  //   } catch (error) {
-  //     console.error('Error fetching route coordinates:', error);
-  //     return [];
-  //   }
-  // };   //
-
-
-  // Helper function to decode the polyline
-// const decodePolyline = (encoded) => {   //
-//   let points = [];
-//   let index = 0,
-//     len = encoded.length;
-//   let lat = 0,
-//     lng = 0;
-
-//   while (index < len) {
-//     let b, shift = 0,
-//       result = 0;
-//     do {
-//       b = encoded.charCodeAt(index++) - 63;
-//       result |= (b & 0x1f) << shift;
-//       shift += 5;
-//     } while (b >= 0x20);
-//     let dlat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
-//     lat += dlat;
-
-//     shift = 0;
-//     result = 0;
-//     do {
-//       b = encoded.charCodeAt(index++) - 63;
-//       result |= (b & 0x1f) << shift;
-//       shift += 5;
-//     } while (b >= 0x20);
-//     let dlng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
-//     lng += dlng;
-
-//     points.push([lat / 1e5, lng / 1e5]);
-//   }
-
-//   return points;
-// };   //
-
-
-  handleRidedata();
-
   return (
+          // <Text style={styles.label}>Ride Details</Text>
+      // <Text style={styles.text}>Username: {nameOfUser}</Text>
+      // <Text style={styles.text}>Bike ID: {realBikeId}</Text>
+      // <Text style={styles.text}>Pickup Location: {pickUpLocation}</Text>
+      // <Text style={styles.text}>
+      //   Pickup Time: {new Date(time_pick).toLocaleString()}
+      // </Text>
+      // <TextInput
+      //   style={styles.input}
+      //   placeholder="Enter Drop-off Location"
+      //   placeholderTextColor="#999"
+      //   value={locDrop}
+      //   onChangeText={setLocDrop}
+      // />
+      // <Button title="End Ride" onPress={handleEndRide} />
     <View style={styles.container}>
-      {/* <MapView  
+      <MapView
+        ref={mapRef}
         style={styles.map}
-        region={region}
-        showsUserLocation={true}
-        followsUserLocation={true}
+        initialRegion={curLoc}
+        region={curLoc} // Update the map with current location changes
       >
-        {markers.map((marker, index) => (
-          <Marker key={index} coordinate={marker} />
-        ))}
-        <Polyline coordinates={routeCoordinates} />
-      </MapView> */}
-      {/* <View style={styles.detailsContainer}> */}
+        <Marker
+          coordinate={curLoc}
+          image={imagePath.icCurLoc}
+        />
+        <Marker
+          coordinate={dropoffCoords}
+          image={imagePath.icGreenMarker}
+        />
+      </MapView>
+
+      <View style={styles.detailsContainer}>
         <Text style={styles.label}>Ride Details</Text>
         <Text style={styles.text}>Username: {nameOfUser}</Text>
         <Text style={styles.text}>Bike ID: {realBikeId}</Text>
@@ -255,7 +267,6 @@ const StatusPage = ({ route, navigation }) => {
           placeholderTextColor='#999'
           value={locDrop}
           onChangeText={handleInputChange}
-          // onChangeText={setLocDrop}
         />
 
         {locationSuggestions.length > 0 && (
@@ -274,22 +285,21 @@ const StatusPage = ({ route, navigation }) => {
           />
         )}
 
+        <Button title="Select" onPress={handleSelectLocation} />
         <Button title="End Ride" onPress={handleEndRide} />
-      {/* </View> */}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  // container: {
-  //   flex: 1,
-  // },
-  // map: {
-  //   flex: 0.6,
-  // },
+  container: {
+    flex: 1,
+  },
+  map: {
+    height: 300,
+  },
   detailsContainer: {
-    flex: 1, // 0.4
-    justifyContent: 'center',
     padding: 16,
     backgroundColor: '#f9f9f9',
   },

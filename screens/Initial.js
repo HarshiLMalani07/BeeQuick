@@ -16,6 +16,8 @@ const Initial = () => {
           const checkCurrentRide = async () => {
             const rideData = await AsyncStorage.getItem('currentRide');
             if (rideData) {
+              // await AsyncStorage.removeItem('currentRide');
+              // navigation.navigate('Rental');
               const { rideId, username, bikeId, loc_pick, time_pick } = JSON.parse(rideData);
               navigation.navigate('Status', { rideId, username, bikeId, loc_pick, time_pick });
             }
